@@ -34,7 +34,7 @@ jobs:
           node-version: 22
 
       - name: JFrog CLI via OIDC
-        uses: jfrog/setup-jfrog-cli@v5
+        uses: jfrog/setup-jfrog-cli@4c2f06da03095113100534a16d58d8a252680949 # v5.3.5 (pinned)
         with:
           oidc-provider-name: github-actions-globalsoft
           oidc-audience: jfrog-github # must match the audience of the JFrog OIDC integration

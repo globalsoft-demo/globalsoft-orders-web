@@ -26,7 +26,7 @@ jobs:
   scan-pull-request:
     runs-on: ubuntu-latest
     steps:
-      - uses: jfrog/frogbot@v3
+      - uses: jfrog/frogbot@b521695f6cce0ffb639163db14cc498db9274b95 # v3.8.3 (pinned: third-party action that receives an admin token)
         env:
           JF_URL: ${{ vars.JF_URL }}
           JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
