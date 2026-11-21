@@ -2,14 +2,18 @@
 # the CVE and the fixed version. It is the last line of defence before merge: the IDE and the
 # CI gates catch issues earlier; Frogbot blocks the bypass of a PR merged without a CI run.
 #
-# Trigger: `pull_request` (not `pull_request_target`): the demo PRs come from branches of this
-# repository, so no secrets are exposed to forks; with OIDC there are no secrets at all.
+# Trigger: `pull_request_target` (JFrog's recommended trigger). GitHub runs THIS file as it is on
+# main, never the PR's copy. That matters because uploading Frogbot V3's scan results needs an
+# admin token on this JFrog SaaS: the OIDC identity mapping `globalsoft-frogbot` (Terraform,
+# shiftleft.tf) issues it only when job_workflow_ref is this file @refs/heads/main, for 1 hour.
+# A pull request cannot change this workflow to obtain the token, and Frogbot V3 analyses the PR
+# statically (no npm install of the PR's code). No JFrog secret is stored in GitHub.
 # Frogbot V3 is configured from the JFrog Platform (Config Profiles); the first scan switches
 # this repository to V3 mode permanently (JFrog docs).
 name: frogbot-scan-pull-request
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize]
 
 permissions:
