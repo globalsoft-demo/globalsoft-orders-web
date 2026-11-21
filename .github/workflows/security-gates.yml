@@ -1,0 +1,70 @@
+# Two-phase security gates (brief Part 3, Task 2).
+#   Phase 1 — jf audit: scans the source dependency graph BEFORE anything is built, so a
+#             known-bad dependency fails the run in seconds, before it reaches a binary.
+#   Phase 2 — jf build-scan: scans what was actually built and published (build-info:
+#             artifacts + resolved dependencies), catching what only exists after the build.
+# Authentication: OIDC. GitHub mints a short-lived identity token; JFrog exchanges it for a
+# 1-hour token scoped to the `ci-pipeline` role of the globalsoft-migration project
+# (Terraform: platform_oidc_identity_mapping.ci). No JFrog secret is stored in GitHub.
+name: security-gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write # required to request the OIDC token
+  contents: read
+
+env:
+  JF_URL: ${{ vars.JF_URL }} # https://<instance>.jfrog.io (repository variable, not a secret)
+  JF_PROJECT: globalsoft-migration
+  BUILD_NAME: globalsoft-orders-web # must be listed in xray_binary_manager_builds (Terraform)
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: JFrog CLI via OIDC
+        uses: jfrog/setup-jfrog-cli@v5
+        with:
+          oidc-provider-name: github-actions-globalsoft
+          oidc-audience: jfrog-github # must match the audience of the JFrog OIDC integration
+
+      - name: Resolve through the project virtual, deploy to the project DEV local
+        run: jf npm-config --repo-resolve=company-npm --repo-deploy=globalsoft-migration-orders-npm-dev-local
+
+      # Needs package-lock.json in the repository: without it `npm ls` fails, jf audit sees no
+      # dependencies and passes (found while building this demo, 21 Nov).
+      - name: "Phase 1 · jf audit (source dependencies)"
+        run: jf audit --project "$JF_PROJECT"
+
+      - name: Build and publish (dependencies and artifact recorded in build-info)
+        run: |
+          npm version "1.0.${GITHUB_RUN_NUMBER}" --no-git-tag-version
+          jf npm ci      --build-name="$BUILD_NAME" --build-number="$GITHUB_RUN_NUMBER" --project="$JF_PROJECT"
+          jf npm publish --build-name="$BUILD_NAME" --build-number="$GITHUB_RUN_NUMBER" --project="$JF_PROJECT"
+          jf rt build-collect-env "$BUILD_NAME" "$GITHUB_RUN_NUMBER" --project="$JF_PROJECT"
+          jf rt build-add-git     "$BUILD_NAME" "$GITHUB_RUN_NUMBER" --project="$JF_PROJECT"
+          jf rt build-publish     "$BUILD_NAME" "$GITHUB_RUN_NUMBER" --project="$JF_PROJECT"
+
+      - name: "Phase 2 · jf build-scan (what was built)"
+        run: jf build-scan "$BUILD_NAME" "$GITHUB_RUN_NUMBER" --project="$JF_PROJECT"
+
+      - name: SBOM (CycloneDX) of the source dependency graph
+        if: always()
+        run: jf audit --sca --sbom --format=cyclonedx --fail=false > sbom.cdx.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json

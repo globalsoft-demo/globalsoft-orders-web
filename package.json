@@ -1,0 +1,15 @@
+{
+  "name": "globalsoft-orders-web",
+  "version": "1.0.0",
+  "description": "GlobalSoft demo service for the JFrog shift-left gates (IDE, CI, Frogbot, SBOM)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test"
+  },
+  "license": "UNLICENSED",
+  "private": false,
+  "dependencies": {
+    "ms": "2.1.3"
+  }
+}

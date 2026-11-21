@@ -1,0 +1,31 @@
+# Frogbot (brief Part 3, Task 3): comments on the pull request with the vulnerable dependency,
+# the CVE and the fixed version. It is the last line of defence before merge: the IDE and the
+# CI gates catch issues earlier; Frogbot blocks the bypass of a PR merged without a CI run.
+#
+# Trigger: `pull_request` (not `pull_request_target`): the demo PRs come from branches of this
+# repository, so no secrets are exposed to forks; with OIDC there are no secrets at all.
+# Frogbot V3 is configured from the JFrog Platform (Config Profiles); the first scan switches
+# this repository to V3 mode permanently (JFrog docs).
+name: frogbot-scan-pull-request
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  id-token: write # OIDC
+  pull-requests: write # PR comment
+  contents: read
+  security-events: write
+
+jobs:
+  scan-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jfrog/frogbot@v3
+        env:
+          JF_URL: ${{ vars.JF_URL }}
+          JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          oidc-provider-name: github-actions-globalsoft
+          oidc-audience: jfrog-github
