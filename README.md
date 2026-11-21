@@ -14,7 +14,7 @@ against the JFrog SaaS target and the `globalsoft-migration` project.
 
 GitHub OIDC → JFrog OIDC integration `github-actions-globalsoft` (audience `jfrog-github`) → identity mapping
 `globalsoft-migration-ci` (claim `repository_owner` = this organisation) → 1-hour token with the project role
-**`ci-pipeline`**: read/deploy in DEV, publish build-info, Xray build metadata. No delete/overwrite, no PROD,
+**`ci-pipeline`**: read/deploy in DEV, publish build-info, Xray metadata of builds and repositories. No delete/overwrite, no PROD,
 no watch or policy management. All of it is Terraform (`terraform/identity.tf`).
 
 Repository variable required: `JF_URL` = `https://<instance>.jfrog.io`.
@@ -30,5 +30,7 @@ Repository variable required: `JF_URL` = `https://<instance>.jfrog.io`.
 
 - **Commit `package-lock.json`.** Without it `npm ls` fails, `jf audit` sees no dependencies and passes with exit 0.
 - **Index the build in Xray** (`xray_binary_manager_builds`), or `jf build-scan` fails with *"not selected for indexing"*.
-- **The predefined Developer role cannot run `jf build-scan`** (403: it lacks `MANAGE_XRAY_MD_BUILD`), and roles whose
-  name contains a space (e.g. *Security Manager*) cannot be named in a token scope. Hence the custom `ci-pipeline` role.
+- **The predefined Developer role cannot run `jf build-scan`** (403). Testing one action at a time showed the scan needs
+  both `MANAGE_XRAY_MD_BUILD` and `MANAGE_XRAY_MD_REPOSITORY`. Roles whose name contains a space (e.g. *Security Manager*)
+  cannot be named in a token scope. Hence the custom `ci-pipeline` role (verified: overwrite, delete, PROD deploy and
+  watch edits all return 403).
