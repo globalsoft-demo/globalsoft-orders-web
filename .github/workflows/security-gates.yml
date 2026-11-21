@@ -38,6 +38,7 @@ jobs:
         with:
           oidc-provider-name: github-actions-globalsoft
           oidc-audience: jfrog-github # must match the audience of the JFrog OIDC integration
+          disable-auto-build-publish: true # our build-info is published explicitly below
 
       - name: Resolve through the project virtual, deploy to the project DEV local
         run: jf npm-config --repo-resolve=company-npm --repo-deploy=globalsoft-migration-orders-npm-dev-local
@@ -49,7 +50,9 @@ jobs:
 
       - name: Build and publish (dependencies and artifact recorded in build-info)
         run: |
-          npm version "1.0.${GITHUB_RUN_NUMBER}" --no-git-tag-version
+          # One version per run. The ci-pipeline role cannot overwrite a different file with the same
+          # version (403, by design); a re-run of the same commit produces identical bytes, which is allowed.
+          npm version "1.1.${GITHUB_RUN_NUMBER}" --no-git-tag-version
           jf npm ci      --build-name="$BUILD_NAME" --build-number="$GITHUB_RUN_NUMBER" --project="$JF_PROJECT"
           jf npm publish --build-name="$BUILD_NAME" --build-number="$GITHUB_RUN_NUMBER" --project="$JF_PROJECT"
           jf rt build-collect-env "$BUILD_NAME" "$GITHUB_RUN_NUMBER" --project="$JF_PROJECT"
@@ -61,7 +64,9 @@ jobs:
 
       - name: SBOM (CycloneDX) of the source dependency graph
         if: always()
-        run: jf audit --sca --sbom --format=cyclonedx --fail=false > sbom.cdx.json
+        # setup-jfrog-cli exports JFROG_CLI_BUILD_PROJECT for the whole job; with a project set,
+        # jf audit evaluates violations, which the CycloneDX format does not support. Drop it here only.
+        run: env -u JFROG_CLI_BUILD_PROJECT jf audit --sca --sbom --format=cyclonedx --fail=false > sbom.cdx.json
 
       - uses: actions/upload-artifact@v4
         if: always()
