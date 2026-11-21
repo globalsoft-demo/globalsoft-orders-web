@@ -12,12 +12,17 @@ against the JFrog SaaS target and the `globalsoft-migration` project.
 
 ## How CI authenticates (no stored credentials)
 
-GitHub OIDC → JFrog OIDC integration `github-actions-globalsoft` (audience `jfrog-github`) → identity mapping
-`globalsoft-migration-ci` (claim `repository_owner` = this organisation) → 1-hour token with the project role
-**`ci-pipeline`**: read/deploy in DEV, publish build-info, Xray metadata of builds and repositories. No delete/overwrite, no PROD,
-no watch or policy management. All of it is Terraform (`terraform/identity.tf`).
+GitHub OIDC → JFrog OIDC integration `github-actions-globalsoft` (audience `jfrog-github`) → project-scoped identity
+mapping `globalsoft-migration-ci` (claim `repository_owner` = this organisation) → 1-hour token with the project role
+**`ci-pipeline`**: read/deploy in DEV, publish build-info, Xray metadata of builds and repositories. No delete/overwrite,
+no PROD, no watch or policy management. All of it is Terraform (`terraform/identity.tf`).
 
 Repository variable required: `JF_URL` = `https://<instance>.jfrog.io`.
+
+## Merge gate
+
+`main` is protected: the checks `gates` (both phases) and `scan-pull-request` (Frogbot) are required, admins included,
+so PR #1 cannot be merged. (Branch protection needs a public repository on GitHub Free, or GitHub Team/Enterprise.)
 
 ## Frogbot identity (the one CI identity with more privilege)
 
@@ -25,8 +30,7 @@ Uploading Frogbot V3's scan results needs an admin token on this JFrog SaaS (eve
 returns 403, tested 21 Nov). Instead of storing one, the OIDC identity mapping `globalsoft-frogbot`
 (priority 1) issues a 1-hour admin token **only** to `.github/workflows/frogbot-scan-pull-request.yml@refs/heads/main`.
 The workflow runs on `pull_request_target`, so GitHub executes main's copy: a pull request cannot edit it to obtain
-the token, and Frogbot V3 analyses the PR statically. Every other workflow matches the CI mapping (priority 2) and
-gets the `gs-ci-pipelines` group token.
+the token, and Frogbot V3 analyses the PR statically. Every other workflow matches the project-scoped CI mapping (priority 2) and gets the `ci-pipeline` role token.
 
 ## The demo
 
