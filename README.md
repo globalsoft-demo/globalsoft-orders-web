@@ -19,12 +19,21 @@ no watch or policy management. All of it is Terraform (`terraform/identity.tf`).
 
 Repository variable required: `JF_URL` = `https://<instance>.jfrog.io`.
 
+## Frogbot identity (the one CI identity with more privilege)
+
+Uploading Frogbot V3's scan results needs an admin token on this JFrog SaaS (every narrower token
+returns 403, tested 21 Nov). Instead of storing one, the OIDC identity mapping `globalsoft-frogbot`
+(priority 1) issues a 1-hour admin token **only** to `.github/workflows/frogbot-scan-pull-request.yml@refs/heads/main`.
+The workflow runs on `pull_request_target`, so GitHub executes main's copy: a pull request cannot edit it to obtain
+the token, and Frogbot V3 analyses the PR statically. Every other workflow matches the CI mapping (priority 2) and
+gets the `gs-ci-pipelines` group token.
+
 ## The demo
 
 1. `main` is clean (`ms@2.1.3`): both gates pass.
 2. Branch `feature/add-lodash` adds `lodash@4.17.11` (CVE-2019-10744, Critical, fixed in 4.17.12).
-   Opening the PR: `security-gates` fails at **phase 1** (exit 3, before anything is built) and Frogbot comments
-   with the CVE and the fix version.
+   PR #1: `security-gates` fails at **phase 1** (exit 3, 10 violations, before anything is built) and Frogbot comments
+   with 6 vulnerabilities (2 Critical), each CVE and its fix version.
 
 ## Lessons recorded while building it
 
