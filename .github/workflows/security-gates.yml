@@ -62,11 +62,14 @@ jobs:
       - name: "Phase 2 · jf build-scan (what was built)"
         run: jf build-scan "$BUILD_NAME" "$GITHUB_RUN_NUMBER" --project="$JF_PROJECT"
 
-      - name: SBOM (CycloneDX) of the source dependency graph
+      # SBOM of what this run resolved (CycloneDX, with hashes), kept as a run artifact.
+      # Not from Xray here on purpose: Xray's SBOM export and `jf audit --format=cyclonedx` need a
+      # platform-level permission (entitlements/export), and the CI token is project-scoped by design
+      # (403 even with every project security action, tested 21 Nov). The Xray SBOM of the scanned
+      # build is exported from the platform by Security (brief Part 3, Task 4).
+      - name: SBOM (CycloneDX) of the resolved dependencies
         if: always()
-        # setup-jfrog-cli exports JFROG_CLI_BUILD_PROJECT for the whole job; with a project set,
-        # jf audit evaluates violations, which the CycloneDX format does not support. Drop it here only.
-        run: env -u JFROG_CLI_BUILD_PROJECT jf audit --sca --sbom --format=cyclonedx --fail=false > sbom.cdx.json
+        run: npm sbom --sbom-format cyclonedx --omit dev > sbom.cdx.json
 
       - uses: actions/upload-artifact@v4
         if: always()
