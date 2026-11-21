@@ -8,7 +8,7 @@ against the JFrog SaaS target and the `globalsoft-migration` project.
 | CI gates | `.github/workflows/security-gates.yml` | Phase 1 `jf audit` (source) → build + build-info → phase 2 `jf build-scan` (what was built) → CycloneDX SBOM of the run (`npm sbom`) as an artifact; the Xray SBOM of the scanned build is exported from the platform |
 | Frogbot | `.github/workflows/frogbot-scan-pull-request.yml` | PR comment with the CVE and the fixed version |
 | IDE | VS Code + JFrog extension, setting `jfrog.watches` | Vulnerable dependency flagged before any build, scoped to the project watch |
-| Dependency resolution | `.jfrog/projects/npm.yaml` (local) / `jf npm-config` (CI) | Resolve through `company-npm` (project virtual), deploy to `globalsoft-migration-orders-npm-dev-local` |
+| Dependency resolution | `jf npm-config --repo-resolve=company-npm --repo-deploy=globalsoft-migration-orders-npm-dev-local` (run by CI; locally once, with your own server ID — `.jfrog/` is not committed) | Resolve through `company-npm` (project virtual), deploy to the project DEV local |
 
 ## How CI authenticates (no stored credentials)
 

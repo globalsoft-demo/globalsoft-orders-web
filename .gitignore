@@ -1,3 +1,5 @@
 node_modules/
 scan-results/
 *.tgz
+# Per-machine JFrog CLI config (server IDs differ per machine); CI generates it with jf npm-config
+.jfrog/
